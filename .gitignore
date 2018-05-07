@@ -1,5 +1,3 @@
 *.egg-info
 mCAnalyze/__pycache__
-.*
 mCAnalyze/.*
-mCAnalyze/.DS_Store
