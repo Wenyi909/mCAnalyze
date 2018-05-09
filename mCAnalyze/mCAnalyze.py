@@ -40,9 +40,23 @@ class MCAnalyze:
 
     Attributes:
     -----------
+    name_orig: path name of the original data as a list
+
+    name_rig: path name of the rigid corrected data as a list
+
+    name_pwrig: path name of the rigid corrected data as a list
+
     data_orig: movie of the original imaging data
+
     data_rig: movie of the rigid movement corrected data
+
     data_pwrig: movie of the non-rigid movement corrected data
+
+    shifts_rig: pixel shifts of rigid motion correction
+
+    x_shifts_pwrig: pixel shift in x direction of non-rigid correction
+
+    y_shifts_pwrig: pixel shift in y direction of non-rigid correction
     """
     def __init__(self, file_name, max_shifts, strides, overlaps,
                  upsample_factor_grid, max_deviation_rigid):
@@ -58,6 +72,12 @@ class MCAnalyze:
 
     def _run_motion_correction(self, file_name, max_shifts, strides, overlaps,
                                upsample_factor_grid, max_deviation_rigid):
+        """
+        Private function that initiates motion correction from CaImAn package,
+        and return the motion corrected file names and their respective pixel
+        shifts.
+        """
+
         offset_orig = np.nanmin(self.data_orig[:1000])
         G6Image = MotionCorrect(
             file_name, offset_orig, max_shifts=max_shifts,
@@ -65,7 +85,9 @@ class MCAnalyze:
             overlaps=overlaps, splits_els=56,
             upsample_factor_grid=upsample_factor_grid, shifts_opencv=True,
             max_deviation_rigid=max_deviation_rigid, nonneg_movie=True)
+
         G6Image.motion_correct_rigid(save_movie=True)
+
         G6Image.motion_correct_pwrigid(save_movie=True,
                                        template=G6Image.total_template_rig)
         name_rig = G6Image.fname_tot_rig
@@ -74,16 +96,25 @@ class MCAnalyze:
         x_shifts_pwrig = G6Image.x_shifts_els
         y_shifts_pwrig = G6Image.y_shifts_els
         template_shape = G6Image.total_template_els.shape
+
         return name_rig, name_pwrig, shifts_rig, x_shifts_pwrig, y_shifts_pwrig, template_shape
 
     def _border_correction(self):
+        """
+        Private function that performs border correction.
+        """
         bord_px_rig = np.ceil(np.max(self.shifts_rig)).astype(np.int)
         bord_px_pwrig = np.ceil(np.maximum(np.max(np.abs(
             self.x_shifts_pwrig)), np.max(np.abs(self.y_shifts_pwrig)))).astype(np.int)
         bord_px = np.maximum(bord_px_rig, bord_px_pwrig)
+
         return bord_px
 
     def _run_matrics_computation(self, name):
+        """
+        Private function that initiates motion correction matrics computation
+        from the CaImAn package.
+        """
 
         final_size = np.subtract(self.template_shape,
                                  2 * self._border_correction())
@@ -96,6 +127,11 @@ class MCAnalyze:
         return tmp, corr, flow, norm, smooth
 
     def play_all_movies(self):
+        """
+        Public function that plays the original data, rigid corrected and
+        non-rigid data file side by side for comparison.
+        """
+
         offset_orig = np.nanmin(self.data_orig[:1000])
         offset_rig = np.min(self.data_rig[:1000])
         offset_pwrig = np.nanmin(self.data_pwrig[:1000])
@@ -108,6 +144,10 @@ class MCAnalyze:
         return self
 
     def compare_correction(self):
+        """
+        Public function that compares motion correction performances and
+        returns graphs, plots, and dataframe as analysis.
+        """
 
         print("Start pixel shift comparison...")
 
